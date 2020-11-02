@@ -7,6 +7,7 @@
 //
 
 import Foundation
+import CoreLocation
 
 struct WeatherManager {
     let weatherUrl =
@@ -16,20 +17,25 @@ struct WeatherManager {
     
     func fetchWeather(cityName: String) {
         let urlString = "\(weatherUrl)&q=\(cityName)"
-        performRequest(urlString: urlString)
+        performRequest(urlString)
     }
     
-    func performRequest(urlString: String) {
+    func fetchWeather(latitude: CLLocationDegrees, longitude: CLLocationDegrees) {
+        let urlString = "\(weatherUrl)&lat=\(latitude)&lon=\(longitude)"
+        performRequest(urlString)
+    }
+    
+    func performRequest(_ urlString: String) {
         if let url = URL(string: urlString) {
             let session = URLSession(configuration: .default)
             let task = session.dataTask(with: url){(data, response, error) in
                 if error != nil {
-                    print(error!)
+                    delegate?.didFailWithError(error: error!)
                     return
                 }
                 if let safeData = data {
-                    if let weather = self.parseJson(weatherData: safeData){
-                        self.delegate?.didUpdateWeather(weather: weather)
+                    if let weather = self.parseJson(safeData){
+                        self.delegate?.didUpdateWeather(self, weather: weather)
                     }
                 }
             }
@@ -38,7 +44,7 @@ struct WeatherManager {
         
     }
     
-    func parseJson(weatherData: Data) -> WeatherModel? {
+    func parseJson(_ weatherData: Data) -> WeatherModel? {
         let decoder = JSONDecoder()
         do {
             let decodedData = try decoder.decode(WeatherData.self, from: weatherData)
@@ -51,7 +57,7 @@ struct WeatherManager {
             return weather
            
         } catch {
-            print(error)
+            delegate?.didFailWithError(error: error)
             return nil
         }
         }
